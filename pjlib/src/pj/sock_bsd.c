@@ -173,6 +173,21 @@ const pj_uint16_t PJ_IP_ADD_MEMBERSHIP  = 0xFFFF;
 const pj_uint16_t PJ_IP_DROP_MEMBERSHIP = 0xFFFF;
 #endif
 
+/* ipv6 Multicasting is not supported e.g. in PocketPC 2003 SDK */
+#ifdef IPV6_MULTICAST_IF
+const pj_uint16_t PJ_IPV6_MULTICAST_IF    = IPV6_MULTICAST_IF;
+const pj_uint16_t PJ_IPV6_MULTICAST_HOPS   = IPV6_MULTICAST_HOPS;
+const pj_uint16_t PJ_IPV6_MULTICAST_LOOP  = IPV6_MULTICAST_LOOP;
+const pj_uint16_t PJ_IPV6_JOIN_GROUP  = IPV6_JOIN_GROUP;
+const pj_uint16_t PJ_IPV6_LEAVE_GROUP = IPV6_LEAVE_GROUP;
+#else
+const pj_uint16_t PJ_IPV6_MULTICAST_IF    = 0xFFFF;
+const pj_uint16_t PJ_IPV6_MULTICAST_HOPS   = 0xFFFF;
+const pj_uint16_t PJ_IPV6_MULTICAST_LOOP  = 0xFFFF;
+const pj_uint16_t PJ_IPV6_JOIN_GROUP  = 0xFFFF;
+const pj_uint16_t PJ_IPV6_LEAVE_GROUP = 0xFFFF;
+#endif
+
 /* recv() and send() flags */
 const int PJ_MSG_OOB		= MSG_OOB;
 const int PJ_MSG_PEEK		= MSG_PEEK;
