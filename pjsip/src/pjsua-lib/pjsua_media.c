@@ -324,7 +324,15 @@ static pj_status_t create_rtp_rtcp_sock(pjsua_call_media *call_med,
 	/* Apply sockopt, if specified */
 	if (cfg->sockopt_params.cnt)
 	    status = pj_sock_setsockopt_params(sock[0], &cfg->sockopt_params);
-
+        
+	
+        /* if ipv6 mcast REUSEADDR*/
+        if (acc->cfg.ipv6_media_mcast_use == PJSUA_IPV6_MCAST_ENABLED){
+           int reuse = 1;
+           status = pj_sock_setsockopt(sock[0], pj_SOL_SOCKET(),
+                                    pj_SO_REUSEADDR(), &reuse, sizeof(reuse));
+        }
+	    
 	/* Bind RTP socket */
 	pj_sockaddr_set_port(&bound_addr, acc->next_rtp_port);
 	status=pj_sock_bind(sock[0], &bound_addr,
@@ -335,6 +343,19 @@ static pj_status_t create_rtp_rtcp_sock(pjsua_call_media *call_med,
 	    continue;
 	}
 	
+        /* Specify the multicast group */
+        if (acc->cfg.ipv6_media_mcast_use == PJSUA_IPV6_MCAST_ENABLED){
+            
+            struct pj_ipv6_mreq imr;
+            imr.ipv6mr_multiaddr = public_addr.ipv6.sin6_addr;
+            imr.ipv6mr_interface = 0;
+            status = pj_sock_setsockopt(sock[0],PJ_SOL_IPV6,// pj_SOL_IPV6(),
+                                        pj_IPV6_JOIN_GROUP(),
+                                        &imr, sizeof(struct pj_ipv6_mreq));
+            if (status != PJ_SUCCESS)
+               return status;
+        }
+	    
 	/* If bound to random port, find out the port number. */
 	if (acc->next_rtp_port == 0) {
 	    pj_sockaddr sock_addr;
@@ -365,7 +386,14 @@ static pj_status_t create_rtp_rtcp_sock(pjsua_call_media *call_med,
 	/* Apply sockopt, if specified */
 	if (cfg->sockopt_params.cnt)
 	    status = pj_sock_setsockopt_params(sock[1], &cfg->sockopt_params);
-
+        
+	
+        /* if ipv6  mcast REUSEADDR*/
+        if (acc->cfg.ipv6_media_mcast_use == PJSUA_IPV6_MCAST_ENABLED){
+           int reuse = 1;
+           status = pj_sock_setsockopt(sock[1], pj_SOL_SOCKET(),
+                                    pj_SO_REUSEADDR(), &reuse, sizeof(reuse));
+        }
 	/* Bind RTCP socket */
 	pj_sockaddr_set_port(&bound_addr, (pj_uint16_t)(acc->next_rtp_port+1));
 	status=pj_sock_bind(sock[1], &bound_addr,
@@ -378,7 +406,20 @@ static pj_status_t create_rtp_rtcp_sock(pjsua_call_media *call_med,
 	    sock[1] = PJ_INVALID_SOCKET;
 	    continue;
 	}
-
+         
+	
+        /* Specify the multicast group */
+        if (acc->cfg.ipv6_media_mcast_use == PJSUA_IPV6_MCAST_ENABLED){
+            struct pj_ipv6_mreq imr;
+            imr.ipv6mr_multiaddr = public_addr.ipv6.sin6_addr;
+            imr.ipv6mr_interface = 0;
+            status = pj_sock_setsockopt(sock[1],PJ_SOL_IPV6,// pj_SOL_IPV6(),
+                                        pj_IPV6_JOIN_GROUP(),
+                                        &imr, sizeof(struct pj_ipv6_mreq));
+            
+             if (status != PJ_SUCCESS)
+                  return status;
+        } 
 	/*
 	 * If we're configured to use STUN, then find out the mapped address,
 	 * and make sure that the mapped RTCP port is adjacent with the RTP.
@@ -2292,7 +2333,13 @@ pj_status_t pjsua_media_channel_init(pjsua_call_id call_id,
 		enabled = PJ_TRUE;
 	    }
 	}
-
+        
+        /* ptt multicast enable*/
+        if (acc->cfg.ptt_mcast_use == PJSUA_PTT_MCAST_ENABLED){
+           pjmedia_sdp_media *m = rem_sdp->media[rem_sdp->media_count-1];
+           acc->cfg.rtp_cfg.public_addr= m->conn->addr;
+        }
+	    
 	if (enabled) {
 	    call_med->enable_rtcp_mux = acc->cfg.enable_rtcp_mux;
 
