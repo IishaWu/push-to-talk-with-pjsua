@@ -1391,6 +1391,31 @@ PJ_DEF(pj_uint16_t) pj_IP_DROP_MEMBERSHIP(void)
     return PJ_IP_DROP_MEMBERSHIP;
 }
 
+PJ_DEF(pj_uint16_t) pj_IPV6_MULTICAST_IF(void)
+{
+    return PJ_IPV6_MULTICAST_IF;
+}
+
+PJ_DEF(pj_uint16_t) pj_IPV6_MULTICAST_HOPS(void)
+{
+    return PJ_IPV6_MULTICAST_HOPS;
+}
+
+PJ_DEF(pj_uint16_t) pj_IPV6_MULTICAST_LOOP(void)
+{
+    return PJ_IPV6_MULTICAST_LOOP;
+}
+
+PJ_DEF(pj_uint16_t) pj_IPV6_JOIN_GROUP(void)
+{
+    return PJ_IPV6_JOIN_GROUP;
+}
+
+PJ_DEF(pj_uint16_t) pj_IPV6_LEAVE_GROUP(void)
+{
+    return PJ_IPV6_LEAVE_GROUP;
+}
+	
 PJ_DEF(int) pj_MSG_OOB(void)
 {
     return PJ_MSG_OOB;
