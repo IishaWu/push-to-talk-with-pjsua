@@ -1132,10 +1132,10 @@
 /* Setting to determine if media transport should switch RTP and RTCP
  * remote address to the source address of the packets it receives.
  *
- * By default it is enabled.
+ * By default it is disable
  */
 #ifndef PJMEDIA_TRANSPORT_SWITCH_REMOTE_ADDR
-#   define PJMEDIA_TRANSPORT_SWITCH_REMOTE_ADDR	    1
+#   define PJMEDIA_TRANSPORT_SWITCH_REMOTE_ADDR	    0
 #endif
 
 
