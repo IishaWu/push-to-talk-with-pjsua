@@ -3383,6 +3383,39 @@ typedef enum pjsua_ipv6_use
 } pjsua_ipv6_use;
 
 /**
+ * Specify how IPv6 ipv6 transport should be used in account config.
+ */
+typedef enum pjsua_ipv6_mcast_use
+{
+    /**
+     * IPv6 is not used.
+     */
+    PJSUA_IPV6_MCAST_DISABLED,
+
+    /**
+     * IPv6 is enabled.
+     */
+    PJSUA_IPV6_MCAST_ENABLED
+
+} pjsua_ipv6_mcast_use;
+
+/**
+ * Mcast Push to talk set rtp address with remote sdp conn addr
+ */
+typedef enum pjsua_ptt_mcast_use
+{
+    /**
+     * PTT MCAST is not used.
+     */
+    PJSUA_PTT_MCAST_DISABLED,
+
+    /**
+     * PTT MCAST is enabled.
+     */
+    PJSUA_PTT_MCAST_ENABLED
+
+} pjsua_ptt_mcast_use
+/**
  * Specify NAT64 options to be used in account config.
  */
 typedef enum pjsua_nat64_opt
@@ -3848,7 +3881,16 @@ typedef struct pjsua_acc_config
      * Specify whether IPv6 should be used on media.
      */
     pjsua_ipv6_use     		ipv6_media_use;
+     
+    /**
+     * Specify whether IPv6 multicast should be used on media.
+     */
+    pjsua_ipv6_mcast_use              ipv6_media_mcast_use;
 
+     /**
+     * Mcast Push to talk set rtp address with remote sdp conn addr
+     */
+    pjsua_ptt_mcast_use              ptt_mcast_use;
     /**
      * Control the use of STUN for the SIP signaling.
      *
