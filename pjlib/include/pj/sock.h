@@ -333,6 +333,21 @@ extern const pj_uint16_t PJ_IP_ADD_MEMBERSHIP;
 extern const pj_uint16_t PJ_IP_DROP_MEMBERSHIP;
 
 
+** IPV6 multicast interface. @see pj_IPV6_MULTICAST_IF() */
+extern const pj_uint16_t PJ_IPV6_MULTICAST_IF;
+
+/** IPv6 multicast hop. @see pj_IPV6_MULTICAST_HOPS() */
+extern const pj_uint16_t PJ_IPV6_MULTICAST_HOPS;
+
+/** IPv6 multicast loopback. @see pj_IPV6_MULTICAST_LOOP() */
+extern const pj_uint16_t PJ_IPV6_MULTICAST_LOOP;
+
+/** Join an IPv6 group. @see pj_IPV6_JOIN_GROUP() */
+extern const pj_uint16_t PJ_IPV6_JOIN_GROUP;
+
+/** Leave an IPv6 group. @see pj_IPV6_LEAVE_GROUP() */
+extern const pj_uint16_t PJ_IPV6_LEAVE_GROUP;
+
 #if defined(PJ_DLL)
     /** Get #PJ_SO_TYPE constant */
     PJ_DECL(pj_uint16_t) pj_SO_TYPE(void);
@@ -369,6 +384,22 @@ extern const pj_uint16_t PJ_IP_DROP_MEMBERSHIP;
 
     /** Get #PJ_IP_DROP_MEMBERSHIP constant */
     PJ_DECL(pj_uint16_t) pj_IP_DROP_MEMBERSHIP(void);
+
+    /** Get #PJ_IPV6_MULTICAST_IF constant */
+    PJ_DECL(pj_uint16_t) pj_IPV6_MULTICAST_IF(void);
+    
+    /** Get #PJ_IPV6_MULTICAST_HOPS constant */
+    PJ_DECL(pj_uint16_t) pj_IPV6_MULTICAST_HOPS(void);
+
+    /** Get #PJ_IPV6_MULTICAST_LOOP constant */
+    PJ_DECL(pj_uint16_t) pj_IPV6_MULTICAST_LOOP(void);
+    
+    /** Get #PJ_IPV6_JOIN_GROUP constant */
+    PJ_DECL(pj_uint16_t) pj_IPV6_JOIN_GROUP(void);
+
+    /** Get #PJ_IPV6_LEAVE_GROUP constant */
+    PJ_DECL(pj_uint16_t) pj_IPV6_LEAVE_GROUP(void);
+
 #else
     /** Get #PJ_SO_TYPE constant */
 #   define pj_SO_TYPE()	    PJ_SO_TYPE
@@ -406,7 +437,21 @@ extern const pj_uint16_t PJ_IP_DROP_MEMBERSHIP;
     /** Get #PJ_IP_DROP_MEMBERSHIP constant */
 #   define pj_IP_DROP_MEMBERSHIP() PJ_IP_DROP_MEMBERSHIP
 #endif
+    
+/** Get #PJ_IPV6_MULTICAST_IF constant */
+#   define pj_IPV6_MULTICAST_IF()    PJ_IPV6_MULTICAST_IF
 
+    /** Get #PJ_IP_MULTICAST_TTL constant */
+#   define pj_IPV6_MULTICAST_HOPS() PJ_IPV6_MULTICAST_HOPS
+
+   /** Get #PJ_IPV6_MULTICAST_LOOP constant */
+#   define pj_IPV6_MULTICAST_LOOP()  PJ_IPV6_MULTICAST_LOOP
+
+    /** Get #PJ_IPV6_ADD_MEMBERSHIP constant */
+#   define pj_IPV6_JOIN_GROUP()  PJ_IPV6_JOIN_GROUP    
+
+   /** Get #PJ_IPV6_DROP_MEMBERSHIP constant */
+#   define pj_IPV6_LEAVE_GROUP() PJ_IPV6_LEAVE_GROUP
 
 /*
  * Flags to be specified in #pj_sock_recv, #pj_sock_send, etc.
@@ -628,6 +673,15 @@ typedef struct pj_ip_mreq {
     pj_in_addr imr_multiaddr;	/**< IP multicast address of group. */
     pj_in_addr imr_interface;	/**< local IP address of interface. */
 } pj_ip_mreq;
+
+
+/**
+ * This structure provides multicast group information for IPv6 addresses.
+ */
+typedef struct pj_ipv6_mreq {
+    pj_in6_addr ipv6mr_multiaddr;   /**< IPv6 multicast address of group. */
+    int ipv6mr_interface;   /**< local IPv6 address of interface. */
+} pj_ipv6_mreq;
 
 
 /**
