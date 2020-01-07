@@ -332,6 +332,7 @@ int main(int argc, char *argv[])
 	cfg.cred_info[0].data = pj_str(SIP_PASSWD);
         cfg.ipv6_media_use = PJSUA_IPV6_ENABLED;
         cfg.ipv6_media_mcast_use = PJSUA_IPV6_MCAST_ENABLED;
+	cfg.ptt_mcast_use = PJSUA_PTT_MCAST_ENABLED;
         //cfg.rtp_cfg.public_addr =pj_str("ff02::1:ffd3:158");
         //cfg.rtp_cfg.bound_addr =pj_str(RTP_ADDR);
 	status = pjsua_acc_add(&cfg, PJ_TRUE, &acc_id);
