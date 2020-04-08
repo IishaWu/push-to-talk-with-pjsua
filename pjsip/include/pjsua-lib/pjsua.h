@@ -3414,7 +3414,7 @@ typedef enum pjsua_ptt_mcast_use
      */
     PJSUA_PTT_MCAST_ENABLED
 
-} pjsua_ptt_mcast_use
+} pjsua_ptt_mcast_use;
 /**
  * Specify NAT64 options to be used in account config.
  */
