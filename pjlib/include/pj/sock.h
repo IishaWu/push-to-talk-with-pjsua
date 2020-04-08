@@ -333,7 +333,7 @@ extern const pj_uint16_t PJ_IP_ADD_MEMBERSHIP;
 extern const pj_uint16_t PJ_IP_DROP_MEMBERSHIP;
 
 
-** IPV6 multicast interface. @see pj_IPV6_MULTICAST_IF() */
+/** IPV6 multicast interface. @see pj_IPV6_MULTICAST_IF() */
 extern const pj_uint16_t PJ_IPV6_MULTICAST_IF;
 
 /** IPv6 multicast hop. @see pj_IPV6_MULTICAST_HOPS() */
