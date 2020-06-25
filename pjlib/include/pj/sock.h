@@ -441,7 +441,7 @@ extern const pj_uint16_t PJ_IPV6_LEAVE_GROUP;
 /** Get #PJ_IPV6_MULTICAST_IF constant */
 #   define pj_IPV6_MULTICAST_IF()    PJ_IPV6_MULTICAST_IF
 
-    /** Get #PJ_IP_MULTICAST_TTL constant */
+    /** Get #PJ_IPV6_MULTICAST_HOPS constant */
 #   define pj_IPV6_MULTICAST_HOPS() PJ_IPV6_MULTICAST_HOPS
 
    /** Get #PJ_IPV6_MULTICAST_LOOP constant */
