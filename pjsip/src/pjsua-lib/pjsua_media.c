@@ -346,12 +346,18 @@ static pj_status_t create_rtp_rtcp_sock(pjsua_call_media *call_med,
 	    continue;
 	}
         /* Specify the multicast group */
+	int hop;
         if (acc->cfg.ipv6_media_mcast_use == PJSUA_IPV6_MCAST_ENABLED){
             
             struct pj_ipv6_mreq imr;
             imr.ipv6mr_multiaddr = public_addr.ipv6.sin6_addr;
             imr.ipv6mr_interface = 0;
-            status = pj_sock_setsockopt(sock[0],PJ_SOL_IPV6,// pj_SOL_IPV6(),
+	    hop = 5;
+            // If IPV6_MULTICAST_HOPS is not set, the default is 1
+            status = pj_sock_setsockopt(sock[0],pj_SOL_IPV6(),
+                                        pj_IPV6_MULTICAST_HOPS(),
+                                        &hop, sizeof(hop));
+            status = pj_sock_setsockopt(sock[0], pj_SOL_IPV6(),
                                         pj_IPV6_JOIN_GROUP(),
                                         &imr, sizeof(struct pj_ipv6_mreq));
             if (status != PJ_SUCCESS)
@@ -410,7 +416,12 @@ static pj_status_t create_rtp_rtcp_sock(pjsua_call_media *call_med,
             struct pj_ipv6_mreq imr;
             imr.ipv6mr_multiaddr = public_addr.ipv6.sin6_addr;
             imr.ipv6mr_interface = 0;
-            status = pj_sock_setsockopt(sock[1],PJ_SOL_IPV6,// pj_SOL_IPV6(),
+	    hop = 5;
+            // If IPV6_MULTICAST_HOPS is not set, the default is 1
+            status = pj_sock_setsockopt(sock[1],pj_SOL_IPV6(),
+                                        pj_IPV6_MULTICAST_HOPS(),
+                                        &hop, sizeof(hop));
+            status = pj_sock_setsockopt(sock[1],pj_SOL_IPV6(),
                                         pj_IPV6_JOIN_GROUP(),
                                         &imr, sizeof(struct pj_ipv6_mreq));
             
