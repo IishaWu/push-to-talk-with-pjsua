@@ -1,61 +1,24 @@
-/* $Id: simple_pjsua.c 3553 2011-05-05 06:14:19Z nanang $ */
-/* 
- * Copyright (C) 2008-2011 Teluu Inc. (http://www.teluu.com)
- * Copyright (C) 2003-2008 Benny Prijono <benny@prijono.org>
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA 
- */
-
-/**
- * simple_pjsua.c
- *
- * This is a very simple but fully featured SIP user agent, with the 
- * following capabilities:
- *  - SIP registration
- *  - Making and receiving call
- *  - Audio/media to sound device.
- *
- * Usage:
- *  - To make outgoing call, start simple_pjsua with the URL of remote
- *    destination to contact.
- *    E.g.:
- *	 simpleua sip:user@remote
- *
- *  - Incoming calls will automatically be answered with 200.
- *
- * This program will quit once it has completed a single call.
- */
 //#include <stdio.h>
 #include <pjsua-lib/pjsua.h>
-//#include <pjsua-lib/pjsua_internal.h>
+#include <mxml.h>
 #define THIS_FILE	"APP"
 #define SIP_PORT        5080
-#define SIP_DOMAIN	"[2001:e10:6840:21:20c:29ff:fe4b:62d9]"
+#define SIP_DOMAIN	"[2001:db8:409:1::8]"
 #define SIP_USER	"glms"
 #define SIP_PASSWD	"12345"
-#define MCASR_ADDR      "ff02::1:ffd3:158"
+#define MCASR_ADDR      "ff08::10"
 #define MCASR_PORT      4000
-//int RCCS=1;
+
 pjsua_call_id acc_id;
-//int GetMessage;
 int g_local_port;
-char mcast_addr[200];
+int group_num = 0;
+char *mcast_addr;
+mxml_node_t *grouplist;
+
 /* Display error and exit application */
 struct mcastRTP{
      int port;
-     char addr[200];
+     char *addr;
 };
 static void error_exit(const char *title, pj_status_t status)
 {
@@ -66,13 +29,13 @@ static void error_exit(const char *title, pj_status_t status)
 void set_mcast_rtp(struct mcastRTP m)
 {
 	g_local_port = m.port;
-        memcpy(mcast_addr, m.addr, sizeof(m.addr));
+        mcast_addr = m.addr;
 }
 void on_stream_created2(pjsua_call_id call_id,
                                   pjsua_on_stream_created_param *param)
 {
     pjmedia_stream_pause(param->stream,PJMEDIA_DIR_ENCODING);
-    printf ("%s","***********************************************");
+    
 }
 void on_call_sdp_created(pjsua_call_id call_id,
                                    pjmedia_sdp_session *sdp,
@@ -90,7 +53,6 @@ void on_call_sdp_created(pjsua_call_id call_id,
 			nPort = m->desc.port;
 		}
 		*/
-                printf("___");
 		pjmedia_sdp_media *m = sdp->media[sdp->media_count-1];
 		m->desc.port = g_local_port;
 
@@ -124,21 +86,10 @@ void on_call_sdp_created(pjsua_call_id call_id,
                         strcat(value,mcast_addr);
                         m->attr[0]->value = pj_str(value);
                        
-                       //attr->value = pj_str("121 telephone-event/9000");
-                       // m->attr[m->attr_count++] = attr;
-                        
+                                               
 		}
 
-		//addr = sdp->origin.addr.ptr;
-		//printf(addr);
-
-		//sdp->origin.addr = *pj_gethostname();
-		//sdp->origin.user = pj_str("pjsip-siprtp");
-		//sdp->origin.version = sdp->origin.id = tv.sec + 2208988800UL;
-		//sdp->origin.net_type = pj_str("IN");
-		//sdp->origin.addr_type = pj_str("IP4");
-		// addr = sdp->origin.addr = *pj_gethostname();
-		//sdp->name = pj_str("pjsip");
+		
 	}
         if (rem_sdp!= NULL)
         {
@@ -196,29 +147,39 @@ char rccs(){
 }
 pj_str_t rccs_3pcc(char *addr){
      pj_status_t status;
-     char *split;
-     char sub[strlen(addr)],fail[100]="";
-     strncpy(sub, addr, strlen(addr)-1);
-     sub[strlen(addr)-1] = 0;
-     split=strtok(sub," ");
-     do{
-         pj_str_t text = pj_str(split);         
+     mxml_node_t *m,*g,*data;
+     pj_str_t text;
+     data = mxmlLoadString(NULL, addr, MXML_OPAQUE_CALLBACK);
+     // get group
+     g = mxmlFindElement(data,data, "group",NULL,NULL,
+                       MXML_DESCEND);
+     for (m = mxmlFindElement(g, data, "member", NULL, NULL, MXML_DESCEND);
+         m != NULL;
+         m = mxmlFindElement(m, data, "member", NULL, NULL, MXML_DESCEND))
+     {
+         text = pj_str((char*)mxmlElementGetAttr(m, "name"));         
          if (rccs(&text)==1){
              /* 3pcc*/
              status = pjsua_call_make_call(acc_id,&text,0, NULL, NULL, NULL);
              //if (status != PJ_SUCCESS) error_exit("Error making call", status);}
           }
-         else
-          sprintf(fail+strlen(fail),split);
-         split=strtok(NULL," ");
-     }while (split);
-     return pj_str(fail);
+     }
+     return pj_str("Success");
 }
 void on_pager_status(pjsua_call_id call_id,const pj_str_t *to, const pj_str_t *body,void *user_data,pjsip_status_code status, pj_str_t *reason){
      if (status >= 300){
             puts("Message delivery failed for message");
      }
-     puts("********************************************************");
+}
+char* getGroupID(int n){
+     //char *new_addr = MCASR_ADDR;
+     char *new_addr = malloc(sizeof(MCASR_ADDR));
+     char c = n+'0';
+     for (int i=0; i<=10;i++){
+         new_addr[i] = *(MCASR_ADDR+i);}
+     new_addr[10] = c;
+     new_addr[11] = '\0';
+     return new_addr;
 }
 /**
  * Incoming IM message (i.e. MESSAGE request)!
@@ -229,9 +190,61 @@ static void on_pager(pjsua_call_id call_id, const pj_str_t *from,
 {
     /* Note: call index may be -1 */
     pj_str_t failmem;
-    failmem = rccs_3pcc(text->ptr);
-    puts("********************************************************");
-    pjsua_im_send(acc_id, from, NULL, &failmem, NULL, NULL);
+    char *work,*id;
+    char buffer[500];
+    pj_str_t t;
+    mxml_node_t *g,*d,*xml,*group,*m,*member;
+    // string to xml
+    mxml_node_t *msg,*data;
+    struct mcastRTP mcast;
+
+
+    mcast.port = MCASR_PORT;
+    mcast.addr = getGroupID(group_num);
+    group_num+=1;
+    set_mcast_rtp(mcast);    
+    // save to my group list
+    msg = mxmlLoadString(NULL, text->ptr, MXML_OPAQUE_CALLBACK);
+    data = mxmlFindElement(msg,msg, "data",NULL,NULL,MXML_DESCEND);
+    work = (char *)mxmlElementGetAttr(data, "work");
+    if (strcmp("makeCall",work)==0){
+       g = mxmlFindElement(msg,msg, "group",NULL,NULL,MXML_DESCEND);
+       // create group in group list
+       group = mxmlNewElement(mxmlGetFirstChild(grouplist), "group");    
+       mxmlElementSetAttr(group,"id",mcast.addr);
+       printf("group id:%s\nmember:",mcast.addr);
+       for (m = mxmlFindElement(g, msg, "member", NULL, NULL, MXML_DESCEND);
+            m != NULL;
+            m = mxmlFindElement(m, msg, "member", NULL, NULL, MXML_DESCEND))
+       {
+            // add to group list
+            member = mxmlNewElement(group, "member");
+            mxmlElementSetAttr(member,"name",mxmlElementGetAttr(m, "name"));
+            t = pj_str((char*)mxmlElementGetAttr(m, "name"));
+            printf("%s \n",t.ptr);
+       }
+       // 3PCC make call
+       puts("\nMake call\n");
+       char buffer[500];
+       failmem = rccs_3pcc(text->ptr);
+       mxmlSaveString(grouplist,buffer, sizeof(buffer),MXML_NO_CALLBACK);
+       //pjsua_im_send(acc_id, from, NULL, &failmem, NULL, NULL);
+   }
+   else{
+      g = mxmlFindElement(msg,msg, "group",NULL,NULL,MXML_DESCEND);
+      id = (char *)mxmlElementGetAttr(group, "name");     
+      group = mxmlFindElement(grouplist,grouplist, "group",id,NULL,MXML_DESCEND); 
+      // init group list xml
+      xml = mxmlNewXML("1.0");    
+      d = mxmlNewElement(grouplist, "data");
+      mxmlElementSetAttr(d,"work","getList");
+      mxmlAdd(d,MXML_ADD_AFTER,MXML_ADD_TO_PARENT,group);
+      mxmlSaveString(grouplist,buffer, sizeof(buffer),MXML_NO_CALLBACK);
+      t = pj_str(buffer);      
+      pjsua_im_send(acc_id, from, NULL, &t, NULL, NULL);
+
+
+   }
 }
 
 /*
@@ -258,7 +271,7 @@ int main(int argc, char *argv[])
         cfg.cb.on_pager = &on_pager;
         cfg.cb.on_stream_created2 = &on_stream_created2;
 	pjsua_logging_config_default(&log_cfg);
-	log_cfg.console_level = 4;
+	log_cfg.console_level = 0;
 
 	status = pjsua_init(&cfg, &log_cfg, NULL);
 	if (status != PJ_SUCCESS) error_exit("Error in pjsua_init()", status);
@@ -267,10 +280,6 @@ int main(int argc, char *argv[])
     //pjsua_set_null_snd_dev();
     /* Add UDP transport. */
     {
-        struct mcastRTP m;
-        m.port = MCASR_PORT;
-        memcpy(m.addr, MCASR_ADDR, sizeof(MCASR_ADDR));
-        set_mcast_rtp(m);
 	pjsua_transport_config cfg;
 
 	pjsua_transport_config_default(&cfg);
@@ -300,9 +309,12 @@ int main(int argc, char *argv[])
 	status = pjsua_acc_add(&cfg, PJ_TRUE, &acc_id);
 	if (status != PJ_SUCCESS) error_exit("Error adding account", status);
     }
-
-
+    // init group list xml
+    grouplist = mxmlNewXML("1.0");    
+    mxml_node_t *data;
+    data = mxmlNewElement(grouplist, "data");
     /* Wait until user press "q" to quit. */
+    puts("GLMS Server Start!\n");
     for (;;) {
 	char option[10];
 	if (fgets(option, sizeof(option), stdin) == NULL) {
