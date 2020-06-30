@@ -1,53 +1,15 @@
-/* $Id: simple_pjsua.c 3553 2011-05-05 06:14:19Z nanang $ */
-/* 
- * Copyright (C) 2008-2011 Teluu Inc. (http://www.teluu.com)
- * Copyright (C) 2003-2008 Benny Prijono <benny@prijono.org>
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA 
- */
-
-/**
- * simple_pjsua.c
- *
- * This is a very simple but fully featured SIP user agent, with the 
- * following capabilities:
- *  - SIP registration
- *  - Making and receiving call
- *  - Audio/media to sound device.
- *
- * Usage:
- *  - To make outgoing call, start simple_pjsua with the URL of remote
- *    destination to contact.
- *    E.g.:
- *	 simpleua sip:user@remote
- *
- *  - Incoming calls will automatically be answered with 200.
- *
- * This program will quit once it has completed a single call.
- */
 //#include <stdio.h>
 #include <pjsua-lib/pjsua.h>
-//#include <pjsua-lib/pjsua_internal.h>
+#include <mxml.h>
 #define THIS_FILE	"APP"
 
-#define SIP_DOMAIN	"[2001:e10:6840:21:20c:29ff:fe4b:62d9]"
+
+#define SIP_DOMAIN	"[2001:db8:409:1::8]"
 #define SIP_USER	"tbcps"
 #define SIP_PASSWD	"12345"
-//int RCCS=1;
+
 pjsua_call_id acc_id;
-//int GetMessage;
+
 /*floor*/
 int f;
 int g_local_port;
@@ -100,21 +62,9 @@ void on_call_sdp_created(pjsua_call_id call_id,
                         m->conn->addr = pj_str("FF02::1");//"2001:e10:6840:21:f9f9:f3e1:9f0c:a3ff");
                         m->attr[0]->value = pj_str("4601 IN IP6 FF02::1");
                        */
-                       //attr->value = pj_str("121 telephone-event/9000");
-                       // m->attr[m->attr_count++] = attr;
-                        
-		}
+                       		}
 
-		//addr = sdp->origin.addr.ptr;
-		//printf(addr);
-
-		//sdp->origin.addr = *pj_gethostname();
-		//sdp->origin.user = pj_str("pjsip-siprtp");
-		//sdp->origin.version = sdp->origin.id = tv.sec + 2208988800UL;
-		//sdp->origin.net_type = pj_str("IN");
-		//sdp->origin.addr_type = pj_str("IP4");
-		// addr = sdp->origin.addr = *pj_gethostname();
-		//sdp->name = pj_str("pjsip");
+		
 	}
         if (rem_sdp!= NULL)
         {
@@ -167,35 +117,90 @@ static void on_call_media_state(pjsua_call_id call_id)
 	pjsua_conf_connect(0, ci.conf_slot);
     }
 }
-/**
- * Incoming IM message (i.e. MESSAGE request)!
- */
-void tbcp(char *addr,pj_str_t *uri){
-     puts(addr);
-     if (addr[0]=='G'){
-        
-        puts("**************************");
+void tbcp(char *text,pj_str_t *uri){
+     char *floor,*id;
+     mxml_node_t *data,*g,*fn;
+     char buffer[500];
+     data = mxmlLoadString(NULL, text, MXML_OPAQUE_CALLBACK);
+     // get group
+     g = mxmlFindElement(data,data, "group",NULL,NULL,
+                       MXML_DESCEND);
+     id = (char *)mxmlElementGetAttr(g, "id");
+     fn = mxmlFindElement(data,data, "floor",NULL,NULL,
+                       MXML_DESCEND);
+     floor = (char *)mxmlElementGetAttr(fn, "value");
+     printf("%s from group ID %s member %s\n",floor,id,uri->ptr);
+     if (strcmp("Request",floor)==0){
+        puts("Floor Granted");
         if (f == 0){
            f = 1;
-           pj_str_t text = pj_str("Granted");
+           mxmlElementSetAttr(fn,"value","Granted");
+           mxmlSaveString(data,buffer, sizeof(buffer),MXML_NO_CALLBACK);
+           pj_str_t text = pj_str(buffer);
+           pjsua_acc_config cfg;
+            pj_pool_t *tmp_pool = pjsua_pool_create("tmp-pjsua", 1000, 1000);
+            pjsua_acc_get_config(acc_id, tmp_pool, &cfg);
+            cfg.cred_info[0].realm = pj_str("ff02::1:150");
            pjsua_im_send(acc_id, uri, NULL, &text, NULL, NULL);
          }
      
          else{
-           pj_str_t text = pj_str("Taken");
+           puts("Floor Taken");
+           mxmlElementSetAttr(fn,"value","Taken");
+           mxmlSaveString(data,buffer, sizeof(buffer),MXML_NO_CALLBACK);
+           pj_str_t text = pj_str(buffer);
            pjsua_im_send(acc_id, uri, NULL, &text, NULL, NULL);
          }
      }
      else
          f =0;
 }
+/**
+ * Incoming IM message (i.e. MESSAGE request)!
+ */
+
 static void on_pager(pjsua_call_id call_id, const pj_str_t *from,
                      const pj_str_t *to, const pj_str_t *contact,
                      const pj_str_t *mime_type, const pj_str_t *text)
 {
     /* Note: call index may be -1 */
     pj_str_t uri = *from;
-    tbcp(text->ptr,&uri);
+    //tbcp(text->ptr,&uri);
+    pj_str_t t,addr;
+    char *work,buffer[500];
+    mxml_node_t *msg,*data,*g,*m,*d,*group,*floor;
+    // save to my group list
+    msg = mxmlLoadString(NULL, text->ptr, MXML_OPAQUE_CALLBACK);
+    data = mxmlFindElement(msg,msg, "data",NULL,NULL,MXML_DESCEND);
+    work = (char *)mxmlElementGetAttr(data, "work");
+    if (strcmp("TBCP",work)==0){
+       tbcp(text->ptr,&uri);
+    }  
+    else{
+       g = mxmlFindElement(msg,msg, "group",NULL,NULL,MXML_DESCEND);
+       for (m = mxmlFindElement(g, msg, "member", NULL, NULL, MXML_DESCEND);
+            m != NULL;
+            m = mxmlFindElement(m, msg, "member", NULL, NULL, MXML_DESCEND))
+       {
+            addr =pj_str( (char*)mxmlElementGetAttr(m, "name"));
+            msg = mxmlNewXML("1.0");    
+            d = mxmlNewElement(msg, "data");
+            mxmlElementSetAttr(d,"work","TBCP");
+            group = mxmlNewElement(d, "group");
+            mxmlElementSetAttr(group,"group",(char *)mxmlElementGetAttr(g, "name"));
+            floor = mxmlNewElement(group, "floor");
+            if (f == 1){
+               // add to group list
+               mxmlElementSetAttr(floor,"value","Taken");
+            }
+            else{
+               mxmlElementSetAttr(floor,"value","Idle");
+            }
+            mxmlSaveString(msg,buffer, sizeof(buffer),MXML_NO_CALLBACK);
+            t = pj_str(buffer);
+            pjsua_im_send(acc_id, &addr, NULL, &t, NULL, NULL); 
+       }
+    }       
 }
 /* Display error and exit application */
 static void error_exit(const char *title, pj_status_t status)
@@ -229,7 +234,7 @@ int main(int argc, char *argv[])
 	cfg.cb.on_call_state = &on_call_state;
         cfg.cb.on_pager = &on_pager;
 	pjsua_logging_config_default(&log_cfg);
-	log_cfg.console_level = 4;
+	log_cfg.console_level = 0;
 
 	status = pjsua_init(&cfg, &log_cfg, NULL);
 	if (status != PJ_SUCCESS) error_exit("Error in pjsua_init()", status);
@@ -271,6 +276,8 @@ int main(int argc, char *argv[])
 
 
     /* Wait until user press "q" to quit. */
+    puts("TBCP Server Start!");
+    puts("Press 'h' to hangup all calls, 'q' to quit");
     for (;;) {
 	char option[10];
 	if (fgets(option, sizeof(option), stdin) == NULL) {
@@ -281,7 +288,6 @@ int main(int argc, char *argv[])
 	    break;
 	if (option[0] == 'h')
 	    pjsua_call_hangup_all();
-        puts("Press 'h' to hangup all calls, 'q' to quit");
     }
 
     /* Destroy pjsua */
