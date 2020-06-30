@@ -1,54 +1,27 @@
-/* $Id: simple_pjsua.c 3553 2011-05-05 06:14:19Z nanang $ */
-/* 
- * Copyright (C) 2008-2011 Teluu Inc. (http://www.teluu.com)
- * Copyright (C) 2003-2008 Benny Prijono <benny@prijono.org>
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA 
- */
 
-/**
- * simple_pjsua.c
- *
- * This is a very simple but fully featured SIP user agent, with the 
- * following capabilities:
- *  - SIP registration
- *  - Making and receiving call
- *  - Audio/media to sound device.
- *
- * Usage:
- *  - To make outgoing call, start simple_pjsua with the URL of remote
- *    destination to contact.
- *    E.g.:
- *	 simpleua sip:user@remote
- *
- *  - Incoming calls will automatically be answered with 200.
- *
- * This program will quit once it has completed a single call.
- */
+
 
 #include <pjsua-lib/pjsua.h>
-//#include <pjsua-lib/pjsua_internal.h>
+#include <mxml.h>
 #define THIS_FILE	"APP"
 
-#define SIP_DOMAIN	"[2001:e10:6840:21:20c:29ff:fe4b:62d9]"
-#define SIP_USER	"nicole"
+#define SIP_DOMAIN	"[2001:db8:409:1::8]"
+#define SIP_USER	"denny"
 #define SIP_PASSWD	"12345"
-//#define RTP_ADDR        "FF02::1"
+
 pjsua_call_id acc_id;
-int Granted;
+
+// floor and group id
+struct floor_id fi;
 int g_local_port;
+char *mcast_addr;
+
+// floor and group id
+struct floor_id
+{
+      int floor;
+      char* id;
+};
 
 void set_local_rtpport(int port)
 {
@@ -70,13 +43,6 @@ void on_call_sdp_created(pjsua_call_id call_id,
         pjmedia_sdp_attr *attr;
 	if (sdp != NULL)
 	{
-		/*for (int i = 0; i < sdp->media_count; i++)
-		{
-			pjmedia_sdp_media *m = sdp->media[i];
-			m->desc.port = 6000 + i;
-			nPort = m->desc.port;
-		}
-		*/
 		pjmedia_sdp_media *m = sdp->media[sdp->media_count-1];
 		m->desc.port = g_local_port;
 
@@ -94,53 +60,20 @@ void on_call_sdp_created(pjsua_call_id call_id,
 			hostname = pj_gethostname();
 			pj_sockaddr_in_init(&tmp_addr, hostname, 0);
 			addr = pj_inet_ntoa(tmp_addr.sin_addr);
-			//pj_ansi_strcpy(ip_addr, addr);
-                        /*
-                        sdp->origin.net_type = pj_str("IN");
-                        sdp->origin.addr_type = pj_str("IP6");
-                        sdp->origin.addr = pj_str("FF02::1");                        
-                        m->conn->net_type = pj_str("IN");
-                        m->conn->addr_type = pj_str("IP6");
-                        m->conn->addr = pj_str("FF02::1");//"2001:e10:6840:21:f9f9:f3e1:9f0c:a3ff");
-                        m->attr[0]->value = pj_str("4001 IN IP6 FF02::1");
-                        */
-                       //attr->value = pj_str("121 telephone-event/9000");
-                       // m->attr[m->attr_count++] = attr;
                         
 		}
 
-		//addr = sdp->origin.addr.ptr;
-		//printf(addr);
-
-		//sdp->origin.addr = *pj_gethostname();
-		//sdp->origin.user = pj_str("pjsip-siprtp");
-		//sdp->origin.version = sdp->origin.id = tv.sec + 2208988800UL;
-		//sdp->origin.net_type = pj_str("IN");
-		//sdp->origin.addr_type = pj_str("IP4");
-		// addr = sdp->origin.addr = *pj_gethostname();
-		//sdp->name = pj_str("pjsip");
 	}
         if (rem_sdp!= NULL)
         {
             pjmedia_sdp_media *rm = rem_sdp->media[rem_sdp->media_count-1];
-            //printf("%s%i","______________________________",rm->desc.port);
         }
-	/*
-	if (rem_sdp!= NULL)
-	{
-		for (int i = 0; i < rem_sdp->media_count; i++)
-		{
-			pjmedia_sdp_media *m = rem_sdp->media[i];
-			m->desc.port = 6000 + i;
-			nPort = m->desc.port;
-		}
-	}
-	*/
 }
    /**
      * This callback is called when media transport state is changed. See
      * also #pjsua_med_tp_state_cb.
      */
+
 /* Callback called by the library upon receiving incoming call */
 static void on_incoming_call(pjsua_acc_id acc_id, pjsua_call_id call_id,
 			     pjsip_rx_data *rdata)
@@ -151,19 +84,19 @@ static void on_incoming_call(pjsua_acc_id acc_id, pjsua_call_id call_id,
     PJ_UNUSED_ARG(rdata);
 
     pjsua_call_get_info(call_id, &ci);
-
+    printf("Incoming call from %s!!\n",ci.remote_info.ptr);
     PJ_LOG(3,(THIS_FILE, "Incoming call from %.*s!!",
 			 (int)ci.remote_info.slen,
 			 ci.remote_info.ptr));
     //pjsua_media_channel_deinit(call_id);
-    /*
+    
     pjsua_acc_config cfg;
     pj_bool_t changed = PJ_FALSE;
     pj_pool_t *tmp_pool = pjsua_pool_create("tmp-pjsua", 1000, 1000);
     pjsua_acc_get_config(acc_id, tmp_pool, &cfg);
-    cfg.rtp_cfg.public_addr =pj_str("ff02::1:ffd3:158");
-    cfg.ipv6_media_mcast_use = PJSUA_IPV6_MCAST_ENABLED;
-    pjsua_transport_create(cfg);*/
+    //puts(cfg.rtp_cfg.public_addr.ptr);
+    mcast_addr = cfg.rtp_cfg.public_addr.ptr;
+    
     puts("Press 'a' to answer the calls,'h' to hangup all calls");
 }
 
@@ -187,19 +120,20 @@ static void on_call_media_state(pjsua_call_id call_id)
     pjsua_call_info ci;
     pjsua_call_get_info(call_id, &ci);
     status = pjsua_conf_connect(ci.conf_slot, 0);
-    printf("%s","********************Connect***************\n");
-    if (Granted==0){
+    if (fi.floor==1){
+       // can talk 
+      puts("You can talk Now!");
+       status = pjsua_conf_disconnect(ci.conf_slot, 0);
+       status = pjsua_conf_connect(0,ci.conf_slot);
+       if (status != PJ_SUCCESS) error_exit("Error in pjsua_create()", status);
+    }
+    else{
+       // can't talk
+       puts("You don't have floor!");
        status = pjsua_conf_disconnect(0,ci.conf_slot);
        status = pjsua_conf_connect(ci.conf_slot, 0);
        if (status != PJ_SUCCESS) error_exit("Error in pjsua_create()", status);
-       printf("%s","************Floor Release***********\n");
     }
-    if (Granted==1){
-    // if (ci.media_status == PJSUA_CALL_MEDIA_ACTIVE) {
-       //status = pjsua_conf_disconnect(ci.conf_slot, 0);
-       status = pjsua_conf_disconnect(ci.conf_slot, 0);
-       status = pjsua_conf_connect(0,ci.conf_slot);
-       printf("%s","*************Floor Granted**************\n");}
 }
 void on_pager_status2(pjsua_call_id call_id,
 			     const pj_str_t *to,
@@ -217,52 +151,101 @@ static void on_pager(pjsua_call_id call_id, const pj_str_t *from,
                      const pj_str_t *mime_type, const pj_str_t *text)
 {
     /* Note: call index may be -1 */
-     /*
-     char sub[strlen(text->ptr)];
-     strncpy(sub, addr, strlen(text->ptr)-1);    
-     printf("%*s",sub);
-     puts(sub);
-     */
-     puts(text->ptr);
-     if (text->ptr[0]=='G'){
-        Granted=1;
-        on_call_media_state(acc_id);
-    }
-    else{
-        Granted=0;
+     mxml_node_t *g,*data,*fn,*msg;
+     char *floor,*id,*work;
+     //puts(text->ptr);
+     msg = mxmlLoadString(NULL, text->ptr, MXML_OPAQUE_CALLBACK);
+     data = mxmlFindElement(msg,msg, "data",NULL,NULL,MXML_DESCEND);
+     work = (char *)mxmlElementGetAttr(data, "work");
+     if (strcmp("TBCP",work)==0){
+        // get group
+        g = mxmlFindElement(data,data, "group",NULL,NULL,MXML_DESCEND);
+        id = (char *)mxmlElementGetAttr(g, "id");
+        fn = mxmlFindElement(data,data, "floor",NULL,NULL,MXML_DESCEND);
+        floor = (char *)mxmlElementGetAttr(fn, "value");
+        if (strcmp("Granted",floor)==0){
+           fi.floor=1;
+           on_call_media_state(acc_id);
+        }
+        else{
+           fi.floor=0;
+           on_call_media_state(acc_id);
+        }
         //on_call_media_state(acc_id);
-    }
+      }
 }
 void make_call(){
-     char input[50],pkg[200]="";
+     char input[50],buffer[500]="";
      char *split;
      char sub[strlen(input)];
-     puts("Enter uri you want to invite, e.g. nicole alice");
+     // create xml
+
+     mxml_node_t *xml;    // <?xml ... ?> 
+     mxml_node_t *data;   // <data>/
+     mxml_node_t *group;  // <group>
+     mxml_node_t *member; //<member>
+
+     xml = mxmlNewXML("1.0");
+     // default group name
+     data = mxmlNewElement(xml, "data");
+     mxmlElementSetAttr(data,"work","makeCall");     
+     group = mxmlNewElement(data, "group");
+     // add myself
+     char buf[50]="sip:";
+     sprintf(buf+strlen(buf),SIP_USER);
+     sprintf(buf+strlen(buf),"@[2001:db8:409:1::8]:5060");
+     member = mxmlNewElement(group, "member");
+     mxmlElementSetAttr(member,"name",buf);
+     // get member
      fgets(input, sizeof(input), stdin);
-     strncpy(sub, input, strlen(input)-1);
-     sub[strlen(input)-1] = 0;
-     split=strtok(sub," ");
-     do{
+     if (strlen(input)>1){
+       strncpy(sub, input, strlen(input)-1);
+       sub[strlen(input)-1] = 0;
+       split=strtok(sub," ");
+       do{
          char buf[50]="sip:";
          sprintf(buf+strlen(buf),split);
-         sprintf(buf+strlen(buf),"@[2001:e10:6840:21:20c:29ff:fe4b:62d9]:5060 ");
-         sprintf(pkg+strlen(pkg),buf);
+         sprintf(buf+strlen(buf),"@[2001:db8:409:1::8]:5060");
+         member = mxmlNewElement(group, "member");
+         mxmlElementSetAttr(member,"name",buf);
          split=strtok(NULL," ");    
-     }while (split);
-     
-     pj_str_t text = pj_str(pkg);
-     pj_str_t uri = pj_str("sip:glms@[2001:e10:6840:21:20c:29ff:fe4b:62d9]:5060");
+       }while (split);
+     }
+     // xml to string
+     mxmlSaveString(xml,buffer, sizeof(buffer),MXML_NO_CALLBACK);
+     pj_str_t text = pj_str(buffer);
+     //pj_str_t uri = pj_str("sip:glms@[2001:db8:409:1::8]:5080");
+     pj_str_t uri = pj_str("sip:glms@[2001:db8:409:1::8]:5060");
      pjsua_im_send(acc_id, &uri, NULL, &text, NULL, NULL);
 
 }
 
 void sendTBCP(char *tbcp){
      
-     pj_str_t text = pj_str(tbcp);
-     pj_str_t uri = pj_str("sip:tbcps@[2001:e10:6840:21:20c:29ff:fe4b:62d9]:5060");
+     // create xml
+
+     mxml_node_t *xml;    // <?xml ... ?> 
+     mxml_node_t *data;   // <data>/
+     mxml_node_t *group;  // <group>
+     mxml_node_t *floor; //<member>
+     char buffer[500];
+
+     xml = mxmlNewXML("1.0");
+     // default group name
+     data = mxmlNewElement(xml, "data");
+     mxmlElementSetAttr(data,"work","TBCP");
+     group = mxmlNewElement(data, "group");
+     mxmlElementSetAttr(group,"id",mcast_addr);
+     floor = mxmlNewElement(data, "floor");
+     mxmlElementSetAttr(floor,"value",tbcp);     
+     mxmlSaveString(xml,buffer, sizeof(buffer),MXML_NO_CALLBACK);
+     pj_str_t uri = pj_str("sip:tbcps@[2001:db8:409:1::8]:5060");
+     pj_str_t text = pj_str(buffer);
      pjsua_im_send(acc_id, &uri, NULL, &text, NULL, NULL);
-     if (tbcp[0]=='R'){
-        Granted=0;
+     //puts(tbcp[0]);
+     //puts("++++++++++++++++++++++++++++");
+     if (strcmp("Release",tbcp)==0){
+        fi.floor=0;
         on_call_media_state(acc_id);              
      }
 }
@@ -296,19 +279,20 @@ int main(int argc, char *argv[])
         cfg.cb.on_pager = &on_pager;
         //cfg.cb.on_pager_status2 = on_pager_status2;
 	pjsua_logging_config_default(&log_cfg);
-	log_cfg.console_level = 4;
-
+	log_cfg.console_level = 0;
 	status = pjsua_init(&cfg, &log_cfg, NULL);
 	if (status != PJ_SUCCESS) error_exit("Error in pjsua_init()", status);
     }
 
-    /* Add UDP transport. */
+    /* Add SIP UDP transport. */
     {
         set_local_rtpport(4000);
 	pjsua_transport_config cfg;
 
 	pjsua_transport_config_default(&cfg);
 	cfg.port = 5080;
+        cfg.bound_addr =pj_str("::");
+        //cfg.public_addr = pj_str("ff02::1:105");
 	status = pjsua_transport_create(PJSIP_TRANSPORT_UDP6, &cfg, NULL);
 	if (status != PJ_SUCCESS) error_exit("Error creating transport", status);
     }
@@ -332,37 +316,42 @@ int main(int argc, char *argv[])
 	cfg.cred_info[0].data = pj_str(SIP_PASSWD);
         cfg.ipv6_media_use = PJSUA_IPV6_ENABLED;
         cfg.ipv6_media_mcast_use = PJSUA_IPV6_MCAST_ENABLED;
-	cfg.ptt_mcast_use = PJSUA_PTT_MCAST_ENABLED;
-        //cfg.rtp_cfg.public_addr =pj_str("ff02::1:ffd3:158");
-        //cfg.rtp_cfg.bound_addr =pj_str(RTP_ADDR);
+        cfg.ptt_mcast_use = PJSUA_PTT_MCAST_ENABLED;
 	status = pjsua_acc_add(&cfg, PJ_TRUE, &acc_id);
+        puts("Registration Finished!");
 	if (status != PJ_SUCCESS) error_exit("Error adding account", status);
     }
+    // floor and group id and floor =  Taken
+    fi.floor = 0;
 
     /* Wait until user press "q" to quit. */
+    puts("Press 'h' to hangup all calls, 'm' to make call, 'q' to quit");
     for (;;) {
 	char option[10];
 
-	puts("Press 'h' to hangup all calls, 'q' to quit");
 	if (fgets(option, sizeof(option), stdin) == NULL) {
 	    puts("EOF while reading stdin, will quit now..");
 	    break;
 	}
-        if (option[0] == 's')
-           sendTBCP("G");
-        if (option[0] == 'e')
-           sendTBCP("R");
-        if (option[0] == 'm')
-            make_call();
-              
-	if (option[0] == 'q')
-	    break;
+        if (option[0] == 's'){
+           puts("Request the floor");
+           sendTBCP("Request");}
+        if (option[0] == 'e'){
+           puts("Release the floor");
+           sendTBCP("Release");}
+        if (option[0] == 'm'){
+            puts("Enter name you want to invite, e.g. nicole alice denny");
+            make_call();}
+	if (option[0] == 'q'){
+            puts("Bye Bye!");
+	    break;}
         if (option[0] == 'a'){
            pjsua_call_answer(acc_id, 200, NULL, NULL);
            puts("Press 's' to get the floor,'e' to release the floor");
         }
-	if (option[0] == 'h')
-	    pjsua_call_hangup_all();
+	if (option[0] == 'h'){
+            puts("hangout the call");
+	    pjsua_call_hangup_all();}
     }
 
     /* Destroy pjsua */
