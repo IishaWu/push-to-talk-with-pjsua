@@ -6,7 +6,7 @@
 #define THIS_FILE	"APP"
 
 #define SIP_DOMAIN	"[2001:db8:409:1::8]"
-#define SIP_USER	"denny"
+#define SIP_USER	"alice"
 #define SIP_PASSWD	"12345"
 
 pjsua_call_id acc_id;
